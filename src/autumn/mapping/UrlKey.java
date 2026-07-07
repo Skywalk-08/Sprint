@@ -51,4 +51,5 @@ public class UrlKey {
     // hashcode est utilisé pour comparer les objets dans les collections, 
     // comme les HashMap ou les HashSet. 
     // Il est important de le redéfinir lorsque vous redéfinissez equals() pour garantir que deux objets égaux ont le même code de hachage.
+    
 }
