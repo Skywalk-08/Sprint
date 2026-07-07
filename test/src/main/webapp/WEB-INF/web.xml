@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+    https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+    version="6.0">
+
+    <servlet>
+        <servlet-name>FrontControllerServlet</servlet-name>
+        <servlet-class>framework.servlet.FrontControllerServlet</servlet-class>
+
+        <!-- Package où scanner les @Controller et @UrlMapping -->
+        <init-param>
+            <param-name>controller_package_name</param-name>
+            <param-value>com.projet_test.controllers</param-value>
+        </init-param>
+
+        <!-- Chargement au démarrage de Tomcat (scan au boot) -->
+        <load-on-startup>1</load-on-startup>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>FrontControllerServlet</servlet-name>
+        <url-pattern>/*</url-pattern>
+    </servlet-mapping>
+
+</web-app>
