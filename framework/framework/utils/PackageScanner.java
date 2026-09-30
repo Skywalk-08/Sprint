@@ -6,15 +6,25 @@ import java.net.*;
 import java.util.*;
 import java.util.jar.*;
 
-/**
- * Utilitaire de scan de packages - Sprint 1 (inchangé)
- * Supporte les classes dans un répertoire ET dans un JAR
- */
 public class PackageScanner {
 
+    public static List<Class<?>> getAnnotatedClassesInPackage(
+        String packageName,
+        Class<? extends Annotation> annotation
+    ) throws IOException, ClassNotFoundException {
+        List<Class<?>> classes = PackageScanner.findClassesInPackage(packageName);
+        List<Class<?>> annotated = new ArrayList<>();
+        for (Class<?> clazz : classes) {
+            if (clazz.getAnnotation(annotation) != null) {
+                annotated.add(clazz);
+            }
+        }
+        return annotated;
+    }
+
     public static List<String> getAnnotatedClassesNamesInPackage(
-            String packageName,
-            Class<? extends Annotation> annotation
+        String packageName,
+        Class<? extends Annotation> annotation
     ) throws IOException, ClassNotFoundException {
         List<String> classesNames = new ArrayList<>();
         List<Class<?>> classes = PackageScanner.findClassesInPackage(packageName);
@@ -23,15 +33,17 @@ public class PackageScanner {
                 classesNames.add(clazz.getName());
             }
         }
+
         return classesNames;
     }
 
     public static List<Class<?>> findClassesInPackage(String packageName)
-            throws IOException, ClassNotFoundException {
+    throws IOException, ClassNotFoundException {
         String path = packageName.replace('.', '/');
         Enumeration<URL> resources = Thread.currentThread()
                 .getContextClassLoader()
                 .getResources(path);
+
         List<Class<?>> classes = new ArrayList<>();
         while (resources.hasMoreElements()) {
             URL resource = resources.nextElement();
@@ -47,7 +59,8 @@ public class PackageScanner {
     private static List<Class<?>> findClassesInDirectory(File dir, String packageName)
             throws ClassNotFoundException {
         List<Class<?>> classes = new ArrayList<>();
-        if (!dir.exists()) return classes;
+        if (!dir.exists())
+            return classes;
         for (File file : dir.listFiles()) {
             if (file.isDirectory()) {
                 classes.addAll(findClassesInDirectory(file, packageName + "." + file.getName()));
@@ -76,4 +89,5 @@ public class PackageScanner {
         }
         return classes;
     }
+
 }
