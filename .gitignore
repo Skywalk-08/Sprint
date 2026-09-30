@@ -1,0 +1,9 @@
+# Artefacts de build du framework
+sprint6/framework/bin/
+sprint6/framework/framework.jar
+
+# Artefacts de build Maven
+sprint6/test/target/
+
+# framework.jar deploye dans le webapp (genere par framework/compile.sh)
+sprint6/test/src/main/webapp/WEB-INF/lib/
