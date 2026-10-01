@@ -6,7 +6,7 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 
 find framework -name "*.java" > sources.txt
 
-javac -cp "lib/*" -d bin @sources.txt
+javac -parameters -g -cp "lib/*" -d bin @sources.txt
 
 rm sources.txt
 
