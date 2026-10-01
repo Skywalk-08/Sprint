@@ -13,6 +13,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import framework.annotations.WebApi;
+import framework.binding.BindingException;
+import framework.binding.ParameterBinder;
 import framework.routing.Mapping;
 import framework.routing.UrlMethod;
 import framework.utils.JsonUtil;
@@ -65,22 +67,26 @@ public class FrontControllerServlet extends HttpServlet {
 
         res.setContentType("text/html; charset=UTF-8");
 
+        boolean api = false;
         try {
             UrlMethod key = new UrlMethod(url, httpMethod);
 
             if (routes.containsKey(key)) {
                 Mapping mapping = routes.get(key);
+                Method method = resolveMethod(mapping);
                 Class<?> controllerClass = Class.forName(mapping.getClassName());
                 Object controller = controllerClass.getDeclaredConstructor().newInstance();
-                Method method = controllerClass.getDeclaredMethod(mapping.getMethod());
                 method.setAccessible(true);
+                api = method.isAnnotationPresent(WebApi.class);
 
-                if (method.isAnnotationPresent(WebApi.class)) {
-                    handleApi(res, controller, method);
+                Object[] args = ParameterBinder.bind(method, req, res);
+
+                if (api) {
+                    handleApi(res, controller, method, args);
                     return;
                 }
 
-                Object result = method.invoke(controller);
+                Object result = method.invoke(controller, args);
 
                 if (result instanceof ModelView mv) {
                     Map<String, Object> model = mv.getModel();
@@ -94,20 +100,45 @@ public class FrontControllerServlet extends HttpServlet {
                 } else if (result instanceof String html) {
                     writeHtml(res, html);
                 } else {
-                    writeError(res, url + " -> " + mapping.getClassName() + " -> "
-                            + mapping.getMethod() + "() : resultat non reconnu");
+                    writeError(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                            url + " -> " + mapping.getClassName() + " -> "
+                                    + mapping.getMethod() + "() : resultat non reconnu");
                 }
             } else {
                 writeNotFound(res, url, httpMethod);
             }
+        } catch (BindingException e) {
+            writeBindingError(res, api, e);
         } catch (Exception e) {
             throw new ServletException("Erreur interne: " + e.getMessage(), e);
         }
     }
 
-    private void handleApi(HttpServletResponse res, Object controller, Method method) throws IOException {
+    /**
+     * Retrouve la methode du controller a partir du Mapping. Les signatures de
+     * methode sont conservees (nom + types des parametres) lors du scan, ce qui
+     * est indispensable pour les methodes mappees qui recoivent des parametres.
+     */
+    private Method resolveMethod(Mapping mapping) throws ClassNotFoundException, NoSuchMethodException {
+        Method handler = mapping.getHandler();
+        if (handler != null) {
+            return handler;
+        }
+        Class<?> controllerClass = Class.forName(mapping.getClassName());
+        String[] types = mapping.getParameterTypes();
+        if (types == null || types.length == 0) {
+            return controllerClass.getDeclaredMethod(mapping.getMethod());
+        }
+        Class<?>[] parameterTypes = new Class<?>[types.length];
+        for (int i = 0; i < types.length; i++) {
+            parameterTypes[i] = Class.forName(types[i]);
+        }
+        return controllerClass.getDeclaredMethod(mapping.getMethod(), parameterTypes);
+    }
+
+    private void handleApi(HttpServletResponse res, Object controller, Method method, Object[] args) throws IOException {
         try {
-            Object result = method.invoke(controller);
+            Object result = method.invoke(controller, args);
             Object body = (result instanceof ModelView mv) ? mv.getModel() : result;
             writeJson(res, HttpServletResponse.SC_OK, JsonUtil.toJson(body));
         } catch (Exception e) {
@@ -116,6 +147,14 @@ public class FrontControllerServlet extends HttpServlet {
             writeJson(res, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
                     JsonUtil.toJson(Map.of("error", message)));
         }
+    }
+
+    private void writeBindingError(HttpServletResponse res, boolean api, BindingException e) throws IOException {
+        if (api) {
+            writeJson(res, HttpServletResponse.SC_BAD_REQUEST, JsonUtil.toJson(Map.of("error", e.getMessage())));
+            return;
+        }
+        writeError(res, HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
     }
 
     private void writeJson(HttpServletResponse res, int status, String json) throws IOException {
@@ -134,9 +173,11 @@ public class FrontControllerServlet extends HttpServlet {
         }
     }
 
-    private void writeError(HttpServletResponse res, String message) throws IOException {
+    private void writeError(HttpServletResponse res, int status, String message) throws IOException {
+        res.setStatus(status);
         try (PrintWriter out = res.getWriter()) {
             out.println("<!DOCTYPE html><html><body>");
+            out.println("<h1>Erreur " + status + "</h1>");
             out.println("<pre>" + message + "</pre>");
             out.println("</body></html>");
         }

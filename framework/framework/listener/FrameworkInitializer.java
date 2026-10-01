@@ -2,6 +2,7 @@ package framework.listener;
 
 import framework.annotations.Controller;
 import framework.annotations.URLMapping;
+import framework.binding.ParameterBinder;
 import framework.routing.Mapping;
 import framework.routing.UrlMethod;
 import framework.utils.PackageScanner;
@@ -39,7 +40,15 @@ public class FrameworkInitializer implements ServletContextListener {
                         if (routes.containsKey(key)) {
                             throw new IllegalArgumentException("Route dupliquée : " + url + " " + httpMethod);
                         }
-                        routes.put(key, new Mapping(className, method.getName()));
+
+                        List<String> bindingErrors = ParameterBinder.validate(method);
+                        if (!bindingErrors.isEmpty()) {
+                            throw new IllegalArgumentException("Binding impossible pour "
+                                    + className + "." + method.getName() + " (" + url + ") : "
+                                    + String.join(" ; ", bindingErrors));
+                        }
+
+                        routes.put(key, new Mapping(className, method.getName(), method));
                     }
                 }
             }

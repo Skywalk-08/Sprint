@@ -1,9 +1,0 @@
-# Artefacts de build du framework
-framework/bin/
-framework/framework.jar
-
-# Artefacts de build Maven
-test/target/
-
-# framework.jar deploye dans le webapp (genere par framework/compile.sh)
-test/src/main/webapp/WEB-INF/lib/

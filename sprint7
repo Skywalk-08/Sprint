@@ -1,0 +1,14 @@
+formulaire
+binding :
+données des vues vers le controller (formulaire ajout , submit -> url(methode controller) )
+verification parametre(methode avec param)
+    si ce n 'est pas  un objet : matching des param save(string i, string n, int age) get les parametres et les matcher avec les attributs de la methode
+    si objet : throw exception, 
+    
+    
+    
+    
+    
+    
+    
+    ******save(User user) : créer une instance de user et set les attributs avec les parametres du formulaire********plutard

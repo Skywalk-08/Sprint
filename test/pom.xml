@@ -62,7 +62,17 @@
     <build>
         <finalName>TestFramework</finalName>
         <plugins>
-            <!-- Copie du framework.jar dans le WAR (WEB-INF/lib) de facon autonome -->
+            <!-- -parameters : conserve les noms des parametres de methode, necessaires au binding -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+
+            <!-- Copie le framework.jar dans le WAR (WEB-INF/lib) de facon autonome -->
             <plugin>
                 <artifactId>maven-resources-plugin</artifactId>
                 <version>3.3.1</version>
