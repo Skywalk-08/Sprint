@@ -11,7 +11,9 @@
 <h2>Routes disponibles</h2>
 <ul>
     <li><code>GET /form</code> : affichage du formulaire</li>
-    <li><code>POST /save</code> : binding <code>save()</code></li>
+    <li><code>POST /save</code> : binding <code>save(String i, String n, int age)</code></li>
+    <li><code>GET /form-user</code> : formulaire pour binding d'objet <code>User</code></li>
+    <li><code>POST /save-user</code> : binding <code>saveUser(User user)</code></li>
     <li><code>POST /save-named</code> : binding avec <code>@Param("...")</code></li>
     <li><code>POST /api/save</code> : reponse JSON (<code>@WebApi</code>)</li>
 </ul>
