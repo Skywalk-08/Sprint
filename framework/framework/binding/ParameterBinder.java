@@ -4,27 +4,15 @@ import framework.annotations.Param;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.beans.BeanInfo;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Binding des donnees de la requete vers les parametres de la methode du controller.
- *
- * Regle du framework :
- *  - un parametre de type simple (String, int, boolean, ...) est rempli avec la
- *    valeur du parametre de requete portant le meme nom ;
- *  - un parametre de type objet (User, List, ModelView, ...) n'est pas bindable :
- *    une BindingException est levee.
- *
- * Exemple :
- *   @URLMapping("/save", method="POST")
- *   public ModelView save(String i, String n, int age) { ... }
- *   -> <form action="save" method="post">
- *        <input name="i"> <input name="n"> <input name="age">
- *      </form>
- */
 public final class ParameterBinder {
 
     private ParameterBinder() {
@@ -50,31 +38,67 @@ public final class ParameterBinder {
                 continue;
             }
 
-            if (!TypeConverter.isSimpleType(type)) {
-                throw new BindingException("Binding d'objet non supporté : le parametre "
-                        + name + " de type " + type.getName()
-                        + " n'est pas un type simple (String, int, boolean, ...).");
+            if (TypeConverter.isSimpleType(type)) {
+                String rawValue = req.getParameter(name);
+                boolean provided = rawValue != null && !rawValue.isBlank();
+
+                if (!provided && type.isPrimitive()) {
+                    throw new BindingException("Parametre manquant ou vide : \"" + name
+                            + "\" de type " + type.getSimpleName()
+                            + " (methode " + method.getDeclaringClass().getSimpleName()
+                            + "." + method.getName() + ")");
+                }
+
+                args[i] = provided ? TypeConverter.convert(rawValue, type) : (type.isPrimitive() ? TypeConverter.convert("0", type) : null);
+                continue;
             }
 
-            String rawValue = req.getParameter(name);
-            boolean provided = rawValue != null && !rawValue.isBlank();
-
-            if (!provided && type.isPrimitive()) {
-                throw new BindingException("Parametre manquant ou vide : \"" + name
-                        + "\" de type " + type.getSimpleName()
-                        + " (methode " + method.getDeclaringClass().getSimpleName()
-                        + "." + method.getName() + ")");
-            }
-
-            args[i] = provided ? TypeConverter.convert(rawValue, type) : null;
+            args[i] = bindObject(type, req, name);
         }
         return args;
     }
 
-    /**
-     * Nom du parametre : @Param("x") si present, sinon le nom reel conserve par la
-     * compilation (-parameters), sinon arg0/arg1/... (ordre de declaration).
-     */
+    public static Object bindObject(Class<?> clazz, HttpServletRequest req, String paramName)
+            throws BindingException {
+        try {
+            Object instance = clazz.getDeclaredConstructor().newInstance();
+            BeanInfo beanInfo = Introspector.getBeanInfo(clazz);
+
+            for (PropertyDescriptor pd : beanInfo.getPropertyDescriptors()) {
+                String prop = pd.getName();
+                if ("class".equals(prop)) {
+                    continue;
+                }
+                String reqParam = req.getParameter(prop);
+                if (reqParam == null) {
+                    continue;
+                }
+                boolean provided = !reqParam.isBlank();
+                Class<?> ptype = pd.getPropertyType();
+                if (!provided && ptype.isPrimitive()) {
+                    throw new BindingException("Parametre manquant ou vide : \"" + prop
+                            + "\" pour " + clazz.getSimpleName());
+                }
+                Object val = provided ? TypeConverter.convert(reqParam, ptype) : (ptype.isPrimitive() ? TypeConverter.convert("0", ptype) : null);
+                if (pd.getWriteMethod() != null) {
+                    pd.getWriteMethod().invoke(instance, val);
+                    continue;
+                }
+                try {
+                    Field f = clazz.getDeclaredField(prop);
+                    f.setAccessible(true);
+                    f.set(instance, val);
+                } catch (NoSuchFieldException ignored) {
+                }
+            }
+            return instance;
+        } catch (Exception e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new BindingException("Erreur lors du binding de l'objet " + clazz.getName()
+                    + (cause.getMessage() != null ? " : " + cause.getMessage() : ""), cause);
+        }
+    }
+
     private static String resolveName(Parameter parameter, int index) {
         Param annotation = parameter.getAnnotation(Param.class);
         if (annotation != null && !annotation.value().isBlank()) {
@@ -87,10 +111,6 @@ public final class ParameterBinder {
         return "arg" + index;
     }
 
-    /**
-     * Verifie qu'une methode mappee est bindable : uniquement des types simples
-     * (ou HttpServletRequest / HttpServletResponse).
-     */
     public static List<String> validate(Method method) {
         List<String> errors = new ArrayList<>();
         for (int i = 0; i < method.getParameterCount(); i++) {
@@ -99,10 +119,10 @@ public final class ParameterBinder {
             if (type == HttpServletRequest.class || type == HttpServletResponse.class) {
                 continue;
             }
-            if (!TypeConverter.isSimpleType(type)) {
-                errors.add("parametre #" + (i + 1) + " de type " + type.getName()
-                        + " (le binding d'objet n'est pas gere)");
+            if (TypeConverter.isSimpleType(type)) {
+                continue;
             }
+            // Accepter les POJOs (objets) pour le binding
         }
         return errors;
     }
