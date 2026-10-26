@@ -1,0 +1,4 @@
+upload fichier 
+
+creation classe uploadfiles, (filename, extention, tableau de bytes) 
+if uploadfiles venant des données reçue du client -> creer un instance de uploadfiles coté framework

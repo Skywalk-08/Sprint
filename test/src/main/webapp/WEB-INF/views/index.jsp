@@ -5,8 +5,8 @@
 <body>
 <h1>Application de test du framework</h1>
 
-<h2>Formulaire (binding de parametres)</h2>
-<p><a href="form">Ouvrir le formulaire de saisie</a></p>
+<h2>Formulaire (binding objet)</h2>
+<p><a href="form-user">Ouvrir le formulaire de saisie</a></p>
 
 <h2>Routes disponibles</h2>
 <ul>
@@ -16,6 +16,9 @@
     <li><code>POST /save-user</code> : binding <code>saveUser(User user)</code></li>
     <li><code>POST /save-named</code> : binding avec <code>@Param("...")</code></li>
     <li><code>POST /api/save</code> : reponse JSON (<code>@WebApi</code>)</li>
+    <li><code>GET /form-upload</code> : formulaire upload de fichiers</li>
+    <li><code>POST /upload</code> : upload d'un seul fichier (<code>UploadFile file</code>)</li>
+    <li><code>POST /upload-multi</code> : upload de plusieurs fichiers (<code>List&lt;UploadFile&gt; files</code>)</li>
 </ul>
 
 <h2>API JSON</h2>
