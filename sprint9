@@ -1,0 +1,14 @@
+Sprint 9
+AUTHORIZATION
+
+session
+
+faire en sorte que la session soit dispo dans une methode d'action dans un controller
+MySession(Map<String, Object>)
+
+récuperer variable
+ajouter variable 
+
+Cote framework
+
+if isset MySession.type  (map fenoina à partir httpSession) <- appel
