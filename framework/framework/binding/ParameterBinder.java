@@ -3,14 +3,21 @@ package framework.binding;
 import framework.annotations.Param;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Part;
 
 import java.beans.BeanInfo;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 public final class ParameterBinder {
@@ -38,6 +45,15 @@ public final class ParameterBinder {
                 continue;
             }
 
+            if (type == UploadFile.class) {
+                args[i] = bindSingleFile(req, name, method);
+                continue;
+            }
+            if (isUploadFileList(type)) {
+                args[i] = bindFileList(req, name, method);
+                continue;
+            }
+
             if (TypeConverter.isSimpleType(type)) {
                 String rawValue = req.getParameter(name);
                 boolean provided = rawValue != null && !rawValue.isBlank();
@@ -58,8 +74,7 @@ public final class ParameterBinder {
         return args;
     }
 
-    public static Object bindObject(Class<?> clazz, HttpServletRequest req, String paramName)
-            throws BindingException {
+    public static Object bindObject(Class<?> clazz, HttpServletRequest req, String paramName) throws BindingException {
         try {
             Object instance = clazz.getDeclaredConstructor().newInstance();
             BeanInfo beanInfo = Introspector.getBeanInfo(clazz);
@@ -97,6 +112,100 @@ public final class ParameterBinder {
             throw new BindingException("Erreur lors du binding de l'objet " + clazz.getName()
                     + (cause.getMessage() != null ? " : " + cause.getMessage() : ""), cause);
         }
+    }
+
+    private static boolean isUploadFileList(Class<?> type) {
+        if (!List.class.isAssignableFrom(type)) {
+            return false;
+        }
+        Type genericType = type.getGenericInterfaces()[0];
+        if (genericType instanceof ParameterizedType pt) {
+            return pt.getActualTypeArguments()[0] == UploadFile.class;
+        }
+        return false;
+    }
+
+    private static UploadFile bindSingleFile(HttpServletRequest req, String paramName, Method method) throws BindingException {
+        try {
+            Part part = req.getPart(paramName);
+            if (part == null || part.getSize() <= 0) {
+                return null;
+            }
+            String filename = getSubmittedFilename(part);
+            String extension = extractExtension(filename);
+            byte[] bytes = readAllBytes(part.getInputStream());
+            return new UploadFile(filename, extension, bytes);
+        } catch (Exception e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new BindingException("Erreur lors de la lecture du fichier \"" + paramName
+                    + "\" pour la methode " + method.getDeclaringClass().getSimpleName()
+                    + "." + method.getName() + " : " + cause.getMessage(), cause);
+        }
+    }
+
+    private static List<UploadFile> bindFileList(HttpServletRequest req, String paramName, Method method) throws BindingException {
+        List<UploadFile> files = new ArrayList<>();
+        try {
+            Collection<Part> parts = req.getParts();
+            for (Part part : parts) {
+                if (!paramName.equals(part.getName())) {
+                    continue;
+                }
+                if (part.getSize() <= 0) {
+                    continue;
+                }
+                String filename = getSubmittedFilename(part);
+                String extension = extractExtension(filename);
+                byte[] bytes = readAllBytes(part.getInputStream());
+                files.add(new UploadFile(filename, extension, bytes));
+            }
+        } catch (Exception e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new BindingException("Erreur lors de la lecture des fichiers \"" + paramName
+                    + "\" pour la methode " + method.getDeclaringClass().getSimpleName()
+                    + "." + method.getName() + " : " + cause.getMessage(), cause);
+        }
+        return files;
+    }
+
+    private static String getSubmittedFilename(Part part) {
+        String header = part.getHeader("content-disposition");
+        if (header == null) {
+            return "unknown";
+        }
+        for (String token : header.split(";")) {
+            token = token.trim();
+            if (token.startsWith("filename=")) {
+                String value = token.substring("filename=".length()).trim();
+                if (value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                int slash = Math.max(value.lastIndexOf('/'), value.lastIndexOf('\\'));
+                if (slash >= 0) {
+                    value = value.substring(slash + 1);
+                }
+                return value;
+            }
+        }
+        return "unknown";
+    }
+
+    private static String extractExtension(String filename) {
+        if (filename == null || filename.isEmpty() || !filename.contains(".")) {
+            return "";
+        }
+        int dot = filename.lastIndexOf('.');
+        return filename.substring(dot + 1).toLowerCase();
+    }
+
+    private static byte[] readAllBytes(InputStream in) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] data = new byte[8192];
+        int nRead;
+        while ((nRead = in.read(data, 0, data.length)) != -1) {
+            buffer.write(data, 0, nRead);
+        }
+        return buffer.toByteArray();
     }
 
     private static String resolveName(Parameter parameter, int index) {
