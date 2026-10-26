@@ -54,6 +54,11 @@ public final class ParameterBinder {
                 continue;
             }
 
+            if (type == MySession.class) {
+                args[i] = new MySession(req.getSession(true));
+                continue;
+            }
+
             if (TypeConverter.isSimpleType(type)) {
                 String rawValue = req.getParameter(name);
                 boolean provided = rawValue != null && !rawValue.isBlank();
