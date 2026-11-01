@@ -29,3 +29,5 @@
 </ul>
 </body>
 </html>
+
+<hr><h2>Sprint 10 (Auth)</h2><ul><li><a href='login-form'>Login</a></li><li><a href='protected'>Protégé (auth requis)</a></li><li><a href='admin'>Admin (role ADMIN requis)</a></li></ul>

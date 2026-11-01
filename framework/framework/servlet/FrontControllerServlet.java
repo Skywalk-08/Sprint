@@ -17,6 +17,8 @@ import framework.binding.BindingException;
 import framework.binding.ParameterBinder;
 import framework.routing.Mapping;
 import framework.routing.UrlMethod;
+import framework.annotations.Auth;
+import framework.utils.AuthUtil;
 import framework.utils.JsonUtil;
 import framework.utils.ModelView;
 
@@ -80,6 +82,33 @@ public class FrontControllerServlet extends HttpServlet {
                 api = method.isAnnotationPresent(WebApi.class);
 
                 Object[] args = ParameterBinder.bind(method, req, res);
+
+                // Auth check
+                Auth authAnn = method.getAnnotation(Auth.class);
+                if (authAnn == null && controllerClass.isAnnotationPresent(Auth.class)) {
+                    authAnn = controllerClass.getAnnotation(Auth.class);
+                }
+                if (authAnn != null && authAnn.required()) {
+                    boolean authenticated = AuthUtil.isAuthenticated(req, authAnn.sessionKey());
+                    if (!authenticated) {
+                        if (api) {
+                            writeJson(res, HttpServletResponse.SC_UNAUTHORIZED, JsonUtil.toJson(java.util.Map.of("error", "Non autorisé")));
+                            return;
+                        }
+                        writeError(res, HttpServletResponse.SC_UNAUTHORIZED, "Non autorisé - Veuillez vous connecter");
+                        return;
+                    }
+                    if (authAnn.roles() != null && authAnn.roles().length > 0) {
+                        if (!AuthUtil.hasRole(req, authAnn.roleKey(), authAnn.roles())) {
+                            if (api) {
+                                writeJson(res, HttpServletResponse.SC_FORBIDDEN, JsonUtil.toJson(java.util.Map.of("error", "Accès interdit")));
+                                return;
+                            }
+                            writeError(res, HttpServletResponse.SC_FORBIDDEN, "Accès interdit - Rôle insuffisant");
+                            return;
+                        }
+                    }
+                }
 
                 if (api) {
                     handleApi(res, controller, method, args);
