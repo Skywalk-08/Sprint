@@ -91,3 +91,114 @@ public class TestController {
         return mv;
     }
 }
+    // Sprint 10 - Auth simple
+    @URLMapping("/login-form")
+    public ModelView loginForm() {
+        return new ModelView("login");
+    }
+
+    @URLMapping(value = "/login", method = "POST")
+    public ModelView login(framework.binding.MySession session, String username, String password) {
+        if ("admin".equals(username) && "admin".equals(password)) {
+            session.add("user", "admin");
+            session.add("role", "ADMIN");
+            ModelView mv = new ModelView("login-success");
+            mv.addAttribute("user", "admin");
+            mv.addAttribute("role", "ADMIN");
+            return mv;
+        } else if ("user".equals(username) && "user".equals(password)) {
+            session.add("user", "user");
+            session.add("role", "USER");
+            ModelView mv = new ModelView("login-success");
+            mv.addAttribute("user", "user");
+            mv.addAttribute("role", "USER");
+            return mv;
+        }
+        ModelView mv = new ModelView("login");
+        mv.addAttribute("error", "Identifiants invalides");
+        return mv;
+    }
+
+    @URLMapping("/logout")
+    public ModelView logout(framework.binding.MySession session) {
+        session.remove("user");
+        session.remove("role");
+        ModelView mv = new ModelView("login");
+        mv.addAttribute("error", "Déconnecté");
+        return mv;
+    }
+
+    @framework.annotations.Auth
+    @URLMapping("/protected")
+    public ModelView protectedPage(framework.binding.MySession session) {
+        ModelView mv = new ModelView("protected");
+        mv.addAttribute("user", session.get("user"));
+        mv.addAttribute("role", session.get("role"));
+        return mv;
+    }
+
+    @framework.annotations.Auth(roles = {"ADMIN"})
+    @URLMapping("/admin")
+    public ModelView adminOnly(framework.binding.MySession session) {
+        ModelView mv = new ModelView("admin");
+        mv.addAttribute("user", session.get("user"));
+        mv.addAttribute("role", session.get("role"));
+        return mv;
+    }
+
+    // Sprint 10 - Auth simple
+    @URLMapping("/login-form")
+    public ModelView loginForm() {
+        return new ModelView("login");
+    }
+
+    @URLMapping(value = "/login", method = "POST")
+    public ModelView login(framework.binding.MySession session, String username, String password) {
+        if ("admin".equals(username) && "admin".equals(password)) {
+            session.add("user", "admin");
+            session.add("role", "ADMIN");
+            ModelView mv = new ModelView("login-success");
+            mv.addAttribute("user", "admin");
+            mv.addAttribute("role", "ADMIN");
+            return mv;
+        } else if ("user".equals(username) && "user".equals(password)) {
+            session.add("user", "user");
+            session.add("role", "USER");
+            ModelView mv = new ModelView("login-success");
+            mv.addAttribute("user", "user");
+            mv.addAttribute("role", "USER");
+            return mv;
+        }
+        ModelView mv = new ModelView("login");
+        mv.addAttribute("error", "Identifiants invalides");
+        return mv;
+    }
+
+    @URLMapping("/logout")
+    public ModelView logout(framework.binding.MySession session) {
+        session.remove("user");
+        session.remove("role");
+        ModelView mv = new ModelView("login");
+        mv.addAttribute("error", "Déconnecté");
+        return mv;
+    }
+
+    @framework.annotations.Auth
+    @URLMapping("/protected")
+    public ModelView protectedPage(framework.binding.MySession session) {
+        ModelView mv = new ModelView("protected");
+        mv.addAttribute("user", session.get("user"));
+        mv.addAttribute("role", session.get("role"));
+        return mv;
+    }
+
+    @framework.annotations.Auth(roles = {"ADMIN"})
+    @URLMapping("/admin")
+    public ModelView adminOnly(framework.binding.MySession session) {
+        ModelView mv = new ModelView("admin");
+        mv.addAttribute("user", session.get("user"));
+        mv.addAttribute("role", session.get("role"));
+        return mv;
+    }
+}
+
